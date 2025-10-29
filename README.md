@@ -36,5 +36,5 @@ Running the model adds two columns to the df: one named 'processed_text', with t
 file_path = '/content/automative_data.xlsx'
 df= pd.read_excel(file_path)
 text_column = 'Variations'
-df_clean= TextCleaning(df, 'Variations')
+df_clean= TextCleaning(df, text_column)
 ```
