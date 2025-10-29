@@ -35,6 +35,7 @@ class SkillVariationClustering:
         self.refined_model= None
 
         # Initialize a TextCleaning instance to preprocess text
+        print('Cleaning and Normalizing Text...\n')
         self.text_preprocessor = TextCleaning(text_column, self.df)
         self.text_preprocessor.data_cleaning()
         self.text_preprocessor.normalize()
@@ -65,7 +66,7 @@ class SkillVariationClustering:
 
         # Construct SentenceTransformer
         self.dapt_model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
-
+        print('Creating embeddings...\n')
         # Generate embeddings
         embeddings = self.dapt_model.encode(self.df[text_column], convert_to_tensor=True)
         return embeddings
@@ -96,7 +97,7 @@ class SkillVariationClustering:
             # Load the projection matrix
              with open(self.projection_path, 'rb') as f:
                 projection_matrix = pickle.load(f)
-            print(f"Loaded projection matrix with shape: {projection_matrix.shape}")
+            print(f"Loaded projection matrix with shape: {projection_matrix.shape}\n")
             # Apply the projection matrix to transform GCN embeddings
             gcn_embeddings = gcn_embeddings @ projection_matrix
 
@@ -150,12 +151,12 @@ class SkillVariationClustering:
 
         # Prepare document embeddings
         if use_gcn and gcn_model is not None and tfidf_matrix is not None:
-            print("Using BERT + GCN fusion")
+            print("Using BERT + GCN fusion\n")
             doc_embeddings = self.fuse_bert_and_simple_gcn_embeddings(
                 bert_embeddings, tfidf_matrix, vocab_adj_matrix, gcn_model
             )
         else:
-            print("Using BERT embeddings only")
+            print("Using BERT embeddings only\n")
             doc_embeddings = bert_embeddings
             if isinstance(doc_embeddings, torch.Tensor):
                 doc_embeddings = doc_embeddings.detach().cpu().numpy()
@@ -285,6 +286,7 @@ class SkillVariationClustering:
         """
         Perform clustering on the text embeddings and return cluster IDs.
         """
+        embeddings= self.convert_to_embeddings('processed_text')
         umap_model = UMAP(random_state= 42, n_components=2, metric= 'cosine',  min_dist=0.01, n_neighbors=3)
 
         # Create a custom vectorizer with custom stop words
@@ -306,17 +308,18 @@ class SkillVariationClustering:
             ctfidf_model=ctfidf_model,
             calculate_probabilities=True
         )
+        print('Generating topics...\n')
         # Fit the model
         topics, probs = topic_model.fit_transform(self.df['processed_text'].to_list())
 
         # Inspect topics
         initial_topics = topic_model.get_topics()
+        print('Generating refined topics\n')
         self.refined_model= BERTopic(umap_model=UMAP(random_state= 42), 
                                 representation_model=representation_model, 
                                 vectorizer_model=vectorizer, 
                                 calculate_probabilities=True).fit(self.df['processed_text'].to_list(), y=initial_topics)
         refined_topics, refined_probs = self.refined_model.transform(self.df['processed_text'].to_list())
-        embeddings= self.convert_to_embeddings('processed_text')
         # Convert to NumPy array
         embeddings = embeddings.cpu().numpy()
         tfidf_matrix, adj_matrix, simple_gcn = self.convert_to_vcgn()
