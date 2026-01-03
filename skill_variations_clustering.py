@@ -313,7 +313,7 @@ class SkillVariationClustering:
         topics, probs = topic_model.fit_transform(self.df['processed_text'].to_list())
 
         # Inspect topics
-        initial_topics = topic_model.get_topics()
+        initial_topics = topic_model.topics_
         print('Generating refined topics\n')
         self.refined_model= BERTopic(umap_model=UMAP(random_state= 42), 
                                 representation_model=representation_model, 
